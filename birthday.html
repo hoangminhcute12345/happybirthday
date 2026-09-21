@@ -1,0 +1,90 @@
+```html
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Birthday Celebration 🎂</title>
+    <meta name="theme-color" content="#1e0b2d" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="birthday.css" />
+  </head>
+
+  <body>
+    <div id="celebration" aria-hidden="true"></div>
+
+    <div class="sky-glow glow-a"></div>
+    <div class="sky-glow glow-b"></div>
+
+    <main class="birthday-page">
+      <div class="top-badge">✨ SECRET REWARD UNLOCKED ✨</div>
+
+      <!-- =========================
+         BIRTHDAY CARD
+    ========================== -->
+
+      <section class="birthday-card">
+        <div class="ribbon ribbon-left">🎀</div>
+        <div class="ribbon ribbon-right">🎀</div>
+
+        <div class="cake">🎂</div>
+
+        <p class="mini-title">22/09/2007</p>
+
+        <h1>HAPPY BIRTHDAY!</h1>
+
+        <div class="recipient" id="recipientName">Bạn thân</div>
+
+        <div class="message" id="birthdayMessage"></div>
+
+        <div class="wish-line">
+          May your new chapter be ridiculously good. 💖
+        </div>
+      </section>
+
+      <!-- =========================
+         LOCAL VIDEO
+    ========================== -->
+
+      <section class="video-card">
+        <div class="video-heading">
+          <span>🎬</span>
+
+          <div>
+            <div class="video-kicker">Video</div>
+
+            <h2>
+              Một video từ youtube :V (Sorry vì không có thời gian edit video)
+            </h2>
+          </div>
+        </div>
+
+        <div class="video-frame-wrap">
+          <video
+            id="birthdayVideo"
+            class="birthday-video"
+            controls
+            preload="metadata"
+            playsinline
+            poster=""
+          >
+            <source src="video.mp4" type="video/mp4" />
+
+            Trình duyệt của bạn không hỗ trợ video.
+          </video>
+        </div>
+      </section>
+    </main>
+
+    <script src="birthday.js"></script>
+  </body>
+</html>
+```

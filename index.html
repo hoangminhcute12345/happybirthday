@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Birthday Quest — 7 Challenges</title>
+    <meta name="theme-color" content="#120c1f" />
+    <meta
+      name="description"
+      content="Birthday Quest — 7 thử thách mini game tương tác"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-a"></div>
+    <div class="bg-orb orb-b"></div>
+    <div class="bg-orb orb-c"></div>
+    <div id="particles" aria-hidden="true"></div>
+
+    <main class="app-shell">
+      <header class="hero">
+        <div class="eyebrow">A MINI BIRTHDAY ADVENTURE</div>
+        <h1>🎂 BIRTHDAY QUEST 🎂</h1>
+        <p class="hero-subtitle">
+          7 thử thách · 7 mảnh mật mã · 1 phần quà bí mật
+        </p>
+
+        <div class="progress-card glass">
+          <div class="progress-head">
+            <span id="progressText">0 / 7 thử thách</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="progress-track" aria-label="Tiến trình">
+            <div id="progressBar" class="progress-fill"></div>
+          </div>
+        </div>
+      </header>
+
+      <section
+        class="challenge-grid"
+        id="challengeGrid"
+        aria-label="7 thử thách mini game"
+      ></section>
+
+      <section class="code-panel glass">
+        <div>
+          <div class="panel-kicker">🔑 PHẦN THƯỞNG ĐANG KHÓA</div>
+          <h2>Nhập mật mã để mở phần quà</h2>
+          <p>
+            Mã sẽ tự động xuất hiện sau mỗi thử thách. Bạn không cần gõ từng
+            đoạn.
+          </p>
+        </div>
+        <div class="code-row">
+          <input
+            id="finalCodeInput"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Mật mã sẽ tự động điền..."
+            aria-label="Mật mã"
+          />
+          <button id="verifyCodeBtn" class="primary-btn">XÁC NHẬN</button>
+        </div>
+        <div class="code-status" id="codeStatus">
+          Hoàn thành tất cả thử thách để mở khóa.
+        </div>
+      </section>
+
+      <footer class="footer">
+        <button id="resetBtn" class="ghost-btn">↺ Reset Game</button>
+        <span>Copyrights by SenpaiStolen.</span>
+      </footer>
+    </main>
+
+    <div class="modal-backdrop" id="modalBackdrop" hidden>
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+      >
+        <button class="modal-close" id="modalClose" aria-label="Đóng">×</button>
+        <div class="modal-icon" id="modalIcon">✨</div>
+        <h3 id="modalTitle">Thông báo</h3>
+        <p id="modalMessage"></p>
+        <div class="modal-actions" id="modalActions"></div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
