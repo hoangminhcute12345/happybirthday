@@ -17,10 +17,6 @@ const CONFIG = {
     "gSHV5",
   ],
   finalCode: "Q2jDumMgbeG7q25nIHNpbmggbmjhuq10IEjDoCDEkMSDbmcgSHV5",
-  shortAnswer: {
-    names: ["long bi", "trần hoàng long", "hoàng long"],
-    numeric: /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$/,
-  },
 };
 
 const CHALLENGES = [
@@ -31,15 +27,15 @@ const CHALLENGES = [
     tag: "",
   },
   {
-    title: "Oẳn tù tì",
-    icon: "✊",
-    desc: "Solo với LongAI, thua thì do bạn 🐣.",
+    title: "Ghép hình",
+    icon: "🖼️",
+    desc: "Bức ảnh chứa những kỉ niệm :))",
     tag: "",
   },
   {
-    title: "Trả lời câu hỏi",
-    icon: "📝",
-    desc: "Test kiến thức cấp 3.",
+    title: "Lật mảnh ghép",
+    icon: "🎴",
+    desc: "Tìm đủ 10 cặp icon sinh nhật.",
     tag: "",
   },
   {
@@ -49,9 +45,9 @@ const CHALLENGES = [
     tag: "",
   },
   {
-    title: "Khảo sát",
+    title: "Trả lời câu hỏi",
     icon: "📝",
-    desc: "Xin chút ý kiến riêng.",
+    desc: "Test kiến thức cấp 3.",
     tag: "",
   },
   {
@@ -61,9 +57,9 @@ const CHALLENGES = [
     tag: "",
   },
   {
-    title: "Final",
-    icon: "✨",
-    desc: "Mảnh ghép cuối.",
+    title: "Khảo sát",
+    icon: "📝",
+    desc: "Xin chút ý kiến riêng.",
     tag: "",
   },
 ];
@@ -97,9 +93,6 @@ function loadState() {
       ? [...new Set(saved.collectedCodes)]
       : [];
 
-    // Always derive the minimum unlocked challenge from completed progress.
-    // This also repairs older/corrupted localStorage where challenge 1 is
-    // completed but currentChallenge was still saved as 1.
     const savedCurrent = Math.min(
       7,
       Math.max(1, Number(saved.currentChallenge) || 1),
@@ -191,8 +184,6 @@ function addCode(num) {
 
 function completeChallenge(num) {
   if (state.completed.includes(num)) return;
-  // Replace the active challenge view with the updated challenge grid.
-  // Reset this guard so the next unlocked challenge can be opened.
   currentChallengeView = null;
   addCode(num);
   const nextText =
@@ -201,8 +192,8 @@ function completeChallenge(num) {
       : "Bạn đã có mảnh mã cuối cùng.";
   showModal(
     "🎉",
-    "CHÍNH XÁC!",
-    `Mã đã nhận: ${CONFIG.codes[num - 1]}\n\n${nextText}`,
+    "Hoàn thành",
+    `Mã nhận được: ${CONFIG.codes[num - 1]}\n\n${nextText}`,
     [
       {
         label: num < 7 ? "TIẾP TỤC" : "ĐÓNG",
@@ -258,20 +249,23 @@ function renderChallengeView(num, host) {
     case 1:
       return initMathPuzzle(body);
     case 2:
-      return initRockPaperScissors(body);
+      return initJigsawPuzzle(body);
     case 3:
-      return initShortAnswer(body);
+      return initMemoryGame(body);
     case 4:
       return initCupGame(body);
     case 5:
-      return initSurvey(body);
+      return initEssayQuiz(body);
     case 6:
       return initNameRoulette(body);
     case 7:
-      return initFinalAnimation(body);
+      return initSurvey(body);
   }
 }
 
+/* =========================================================
+   CHALLENGE 1 — TÍCH PHÂN
+   ========================================================= */
 function initMathPuzzle(root) {
   root.innerHTML = `
     <div class="math-card">
@@ -298,173 +292,322 @@ function initMathPuzzle(root) {
   });
 }
 
-function initRockPaperScissors(root) {
-  const choices = [
-    { key: "rock", label: "BÚA", emoji: "✊" },
-    { key: "paper", label: "BAO", emoji: "✋" },
-    { key: "scissors", label: "KÉO", emoji: "✌️" },
+/* =========================================================
+   CHALLENGE 2 — GHÉP HÌNH (3 vòng: picture / puzzle2 / puzzle3)
+   ========================================================= */
+function initJigsawPuzzle(root) {
+  const COLS = 4;
+  const ROWS = 3;
+  const TOTAL = COLS * ROWS;
+  const IMAGES = ["./picture.png", "./puzzle_special.png", "./puzzle3.png"];
+  let roundIdx = 0;
+
+  function startRound() {
+    const image = IMAGES[roundIdx];
+
+    root.innerHTML = `
+      <div class="jigsaw-wrapper">
+        <div class="jigsaw-round-badge">Vòng ${roundIdx + 1} / ${IMAGES.length}</div>
+        <p class="jigsaw-hint">Kéo các mảnh vào đúng vị trí để ghép hoàn chỉnh bức ảnh.</p>
+        <div class="jigsaw-layout">
+          <div class="jigsaw-tray" id="jigsawTray" aria-label="Khu chứa mảnh ghép"></div>
+          <div class="jigsaw-board" id="jigsawBoard" aria-label="Bảng ghép hình" style="--jcols:${COLS};--jrows:${ROWS}"></div>
+        </div>
+        <div class="jigsaw-status" id="jigsawStatus">0 / ${TOTAL} mảnh đã đúng vị trí</div>
+      </div>
+    `;
+
+    const tray = $("#jigsawTray", root);
+    const board = $("#jigsawBoard", root);
+    const statusEl = $("#jigsawStatus", root);
+
+    const correctOrder = Array.from({ length: TOTAL }, (_, i) => i);
+    const shuffled = shuffle([...correctOrder]);
+
+    const placed = new Array(TOTAL).fill(null);
+    let placedCount = 0;
+    let draggedPiece = null;
+
+    shuffled.forEach((pieceIdx) => {
+      tray.appendChild(createPiece(pieceIdx));
+    });
+
+    for (let s = 0; s < TOTAL; s++) {
+      const slot = document.createElement("div");
+      slot.className = "jigsaw-slot";
+      slot.dataset.slot = String(s);
+      slot.setAttribute("aria-label", `Ô ${s + 1}`);
+      setupSlotDrop(slot, s);
+      board.appendChild(slot);
+    }
+
+    function createPiece(pieceIdx) {
+      const col = pieceIdx % COLS;
+      const row = Math.floor(pieceIdx / COLS);
+      const piece = document.createElement("div");
+      piece.className = "jigsaw-piece";
+      piece.dataset.piece = String(pieceIdx);
+      piece.setAttribute("draggable", "true");
+      piece.setAttribute("aria-label", `Mảnh ${pieceIdx + 1}`);
+      piece.style.backgroundImage = `url('${image}')`;
+      piece.style.backgroundSize = `${COLS * 100}% ${ROWS * 100}%`;
+      piece.style.backgroundPosition = `${(col / (COLS - 1)) * 100}% ${(row / (ROWS - 1)) * 100}%`;
+      setupPieceDrag(piece, pieceIdx);
+      return piece;
+    }
+
+    function setupPieceDrag(piece, pieceIdx) {
+      piece.addEventListener("dragstart", (e) => {
+        draggedPiece = pieceIdx;
+        piece.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", String(pieceIdx));
+      });
+      piece.addEventListener("dragend", () => {
+        draggedPiece = null;
+        piece.classList.remove("dragging");
+      });
+
+      let touchOffsetX = 0;
+      let touchOffsetY = 0;
+      let ghost = null;
+
+      piece.addEventListener(
+        "touchstart",
+        (e) => {
+          if (piece.classList.contains("locked")) return;
+          draggedPiece = pieceIdx;
+          const t = e.touches[0];
+          const rect = piece.getBoundingClientRect();
+          touchOffsetX = t.clientX - rect.left;
+          touchOffsetY = t.clientY - rect.top;
+          ghost = createPiece(pieceIdx);
+          ghost.classList.add("jigsaw-ghost");
+          ghost.style.width = rect.width + "px";
+          ghost.style.height = rect.height + "px";
+          ghost.style.left = t.clientX - touchOffsetX + "px";
+          ghost.style.top = t.clientY - touchOffsetY + "px";
+          document.body.appendChild(ghost);
+          e.preventDefault();
+        },
+        { passive: false },
+      );
+
+      piece.addEventListener(
+        "touchmove",
+        (e) => {
+          if (!ghost) return;
+          const t = e.touches[0];
+          ghost.style.left = t.clientX - touchOffsetX + "px";
+          ghost.style.top = t.clientY - touchOffsetY + "px";
+          e.preventDefault();
+        },
+        { passive: false },
+      );
+
+      piece.addEventListener("touchend", (e) => {
+        if (!ghost) return;
+        ghost.remove();
+        ghost = null;
+        const t = e.changedTouches[0];
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        const slotEl = el?.closest(".jigsaw-slot");
+        if (slotEl) {
+          const slotIdx = Number(slotEl.dataset.slot);
+          tryPlace(draggedPiece, slotIdx);
+        }
+        draggedPiece = null;
+      });
+    }
+
+    function setupSlotDrop(slot, slotIdx) {
+      slot.addEventListener("dragover", (e) => {
+        if (slot.classList.contains("slot-locked")) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        slot.classList.add("drag-over");
+      });
+      slot.addEventListener("dragleave", () =>
+        slot.classList.remove("drag-over"),
+      );
+      slot.addEventListener("drop", (e) => {
+        e.preventDefault();
+        slot.classList.remove("drag-over");
+        if (slot.classList.contains("slot-locked")) return;
+        const pIdx = Number(e.dataTransfer.getData("text/plain"));
+        tryPlace(pIdx, slotIdx);
+      });
+    }
+
+    function tryPlace(pieceIdx, slotIdx) {
+      if (placed[slotIdx] !== null) return;
+      const pieceInTray = tray.querySelector(`[data-piece="${pieceIdx}"]`);
+      if (!pieceInTray) return;
+
+      if (pieceIdx === slotIdx) {
+        pieceInTray.remove();
+        const fixedPiece = createPiece(pieceIdx);
+        fixedPiece.classList.add("locked");
+        fixedPiece.setAttribute("draggable", "false");
+        const slot = board.querySelector(`[data-slot="${slotIdx}"]`);
+        slot.classList.add("slot-locked");
+        slot.appendChild(fixedPiece);
+        placed[slotIdx] = pieceIdx;
+        placedCount++;
+        updateStatus();
+
+        if (placedCount === TOTAL) {
+          setTimeout(() => {
+            if (roundIdx < IMAGES.length - 1) {
+              roundIdx++;
+              statusEl.textContent =
+                "🎉 Hoàn thành vòng! Chuẩn bị vòng tiếp theo...";
+              setTimeout(startRound, 1200);
+            } else {
+              completeChallenge(2);
+            }
+          }, 500);
+        }
+      } else {
+        const slot = board.querySelector(`[data-slot="${slotIdx}"]`);
+        slot.classList.add("slot-wrong");
+        pieceInTray.classList.add("shake");
+        setTimeout(() => {
+          slot.classList.remove("slot-wrong");
+          pieceInTray.classList.remove("shake");
+        }, 400);
+      }
+    }
+
+    function updateStatus() {
+      statusEl.textContent = `${placedCount} / ${TOTAL} mảnh đã đúng vị trí`;
+    }
+  }
+
+  startRound();
+}
+
+/* =========================================================
+   CHALLENGE 3 — LẬT MẢNH GHÉP (MEMORY MATCH)
+   ========================================================= */
+function initMemoryGame(root) {
+  const DRAGON = "🐉";
+  const EIGHT_BALL = "🎱";
+
+  const ICONS = [
+    "🎂",
+    "🎁",
+    "🎈",
+    "🎉",
+    "🍰",
+    "🧁",
+    "🍭",
+    "🎵",
+    DRAGON,
+    EIGHT_BALL,
   ];
-  const beats = {
-    rock: "scissors",
-    paper: "rock",
-    scissors: "paper",
-  };
+  const TOTAL_PAIRS = ICONS.length;
+
+  const deck = shuffle(ICONS.flatMap((icon) => [{ icon }, { icon }]));
+
+  // Giữ đúng 1 lá rồng nằm cạnh đúng 1 lá bi số 8
+  const dragonIdx = deck.findIndex((c) => c.icon === DRAGON);
+  const ballIdx = deck.findIndex((c) => c.icon === EIGHT_BALL);
+  if (Math.abs(dragonIdx - ballIdx) !== 1) {
+    const target =
+      dragonIdx === deck.length - 1 ? dragonIdx - 1 : dragonIdx + 1;
+    [deck[target], deck[ballIdx]] = [deck[ballIdx], deck[target]];
+  }
 
   root.innerHTML = `
-    <div class="rps-game">
-      <div class="rps-scoreboard">
-        <div class="rps-score-card">
-          <span>BẠN</span>
-          <strong id="rpsPlayerWins">0</strong>
-        </div>
-        <div class="rps-vs">VS</div>
-        <div class="rps-score-card">
-          <span>MÁY</span>
-          <strong id="rpsCpuWins">0</strong>
-        </div>
+    <div class="memory-game">
+      <div class="memory-head">
+        <span id="memoryStatus">Đã ghép 0 / ${TOTAL_PAIRS} cặp</span>
+        <button id="memoryRestart" class="ghost-btn" type="button">↺ Chơi lại</button>
       </div>
-
-      <div class="rps-arena">
-        <div class="rps-side">
-          <div id="rpsPlayerPick" class="rps-pick">❔</div>
-          <span>BẠN</span>
-        </div>
-        <div class="rps-result" id="rpsResult" aria-live="polite">Chọn một chiêu!</div>
-        <div class="rps-side">
-          <div id="rpsCpuPick" class="rps-pick">❔</div>
-          <span>MÁY</span>
-        </div>
-      </div>
-
-      <div class="rps-choices" role="group" aria-label="Lựa chọn">
-        ${choices
-          .map(
-            (choice) => `
-          <button class="rps-choice" data-choice="${choice.key}" type="button">
-            <span class="rps-choice-emoji">${choice.emoji}</span>
-            <span>${choice.label}</span>
-          </button>
-        `,
-          )
-          .join("")}
-      </div>
-
-      <div id="rpsStatus" class="rps-status">Bạn phải thắng ít nhất 1 ván để vượt qua thử thách.</div>
+      <div class="memory-board" id="memoryBoard" aria-label="Bảng lật mảnh ghép"></div>
+      <p class="memory-hint">
+        Mỗi lượt lật 2 mảnh. Hai mảnh cùng icon sẽ được giữ nguyên, khác icon sẽ úp lại.
+      </p>
     </div>
   `;
 
-  const playerPick = $("#rpsPlayerPick", root);
-  const cpuPick = $("#rpsCpuPick", root);
-  const result = $("#rpsResult", root);
-  const status = $("#rpsStatus", root);
-  const playerWins = $("#rpsPlayerWins", root);
-  const cpuWins = $("#rpsCpuWins", root);
-  const buttons = [...root.querySelectorAll(".rps-choice")];
-  const byKey = Object.fromEntries(choices.map((c) => [c.key, c]));
+  const board = $("#memoryBoard", root);
+  const statusEl = $("#memoryStatus", root);
 
-  const randomChoice = () => {
-    const index = Math.floor(Math.random() * choices.length);
-    return choices[index].key;
-  };
+  let firstCard = null;
+  let lock = false;
+  let matchedPairs = 0;
 
-  const resultText = (player, cpu) => {
-    if (player === cpu) return ["🤝 HÒA!", "Cũng thường thôi 😏", "draw"];
-    if (beats[player] === cpu) return ["🎉 THẮNG!", "I was lost 😥", "win"];
-    return ["😈 THUA!", "Non choẹt 😂", "lose"];
-  };
+  deck.forEach((card, index) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "memory-card";
+    btn.dataset.icon = card.icon;
+    btn.setAttribute("aria-label", `Mảnh ghép ${index + 1}`);
+    btn.innerHTML = `
+      <span class="memory-card-inner">
+        <span class="memory-card-face memory-card-back">?</span>
+        <span class="memory-card-face memory-card-front">${card.icon}</span>
+      </span>
+    `;
+    btn.addEventListener("click", () => flipCard(btn));
+    board.appendChild(btn);
+  });
 
-  async function play(playerChoice) {
-    if (rpsGame.busy || state.completed.includes(2)) return;
-    rpsGame.busy = true;
-    buttons.forEach((button) => {
-      button.disabled = true;
-      button.classList.remove("chosen");
-    });
-    const selectedButton = buttons.find(
-      (button) => button.dataset.choice === playerChoice,
-    );
-    selectedButton?.classList.add("chosen");
+  function flipCard(card) {
+    if (lock) return;
+    if (
+      card.classList.contains("flipped") ||
+      card.classList.contains("matched")
+    )
+      return;
 
-    const cpuChoice = randomChoice();
-    const playerInfo = byKey[playerChoice];
-    const cpuInfo = byKey[cpuChoice];
+    card.classList.add("flipped");
 
-    playerPick.textContent = playerInfo.emoji;
-    cpuPick.textContent = "❔";
-    result.textContent = "Đang đấu...";
-    result.className = "rps-result thinking";
-    status.textContent = "✊ ✋ ✌️";
-    await wait(520);
-
-    cpuPick.textContent = cpuInfo.emoji;
-    rpsGame.rounds += 1;
-    const [headline, detail, type] = resultText(playerChoice, cpuChoice);
-    result.textContent = headline;
-    result.className = `rps-result ${type}`;
-
-    if (type === "win") {
-      rpsGame.wins += 1;
-      playerWins.textContent = String(rpsGame.wins);
-      status.textContent = `${detail} Bạn đã vượt qua thử thách!`;
-      buttons.forEach((button) => {
-        button.disabled = true;
-      });
-      await wait(450);
-      completeChallenge(2);
+    if (!firstCard) {
+      firstCard = card;
       return;
     }
 
-    if (type === "lose") {
-      const previous = Number(cpuWins.textContent) || 0;
-      cpuWins.textContent = String(previous + 1);
+    const first = firstCard;
+    firstCard = null;
+
+    if (first.dataset.icon === card.dataset.icon) {
+      first.classList.add("matched");
+      card.classList.add("matched");
+      first.disabled = true;
+      card.disabled = true;
+
+      matchedPairs++;
+      statusEl.textContent = `Đã ghép ${matchedPairs} / ${TOTAL_PAIRS} cặp`;
+
+      if (matchedPairs === TOTAL_PAIRS) {
+        lock = true;
+        setTimeout(() => completeChallenge(3), 600);
+      }
+      return;
     }
 
-    status.textContent = detail;
-    await wait(180);
-    rpsGame.busy = false;
-    buttons.forEach((button) => {
-      button.disabled = false;
-    });
+    lock = true;
+    first.classList.add("wrong");
+    card.classList.add("wrong");
+
+    setTimeout(() => {
+      first.classList.remove("flipped", "wrong");
+      card.classList.remove("flipped", "wrong");
+      lock = false;
+    }, 750);
   }
 
-  buttons.forEach((button) => {
-    button.addEventListener("click", () => play(button.dataset.choice));
+  $("#memoryRestart", root).addEventListener("click", () => {
+    initMemoryGame(root);
   });
 }
 
-function initShortAnswer(root) {
-  root.innerHTML = `
-    <div class="questions">
-      <div class="question-item">
-        <label for="q1">1. Nhân vật nổi (tai) tiếng nhất lơp A2K57 là ai?</label>
-        <input id="q1" type="text" autocomplete="off" placeholder="Nhập câu trả lời">
-      </div>
-      <div class="question-item">
-        <label for="q2">2. Điểm thi toán cuối kỳ 2 lớp 12 của Hoàng Minh là bao nhiêu?</label>
-        <input id="q2" type="text" inputmode="decimal" autocomplete="off" placeholder="Nhập một số bất kỳ">
-      </div>
-      <div style="text-align:center"><button id="shortCheck" class="primary-btn">KIỂM TRA</button></div>
-    </div>
-  `;
-  $("#shortCheck", root).addEventListener("click", () => {
-    const q1 = normalizeText($("#q1", root).value);
-    const q2 = $("#q2", root).value.replace(/\s+/g, "");
-    const accepted = CONFIG.shortAnswer.names.map(normalizeText);
-    const ok1 = accepted.includes(q1);
-    const ok2 = CONFIG.shortAnswer.numeric.test(q2);
-    if (ok1 && ok2) completeChallenge(3);
-    else {
-      $("#q1", root).classList.toggle("shake", !ok1);
-      $("#q2", root).classList.toggle("shake", !ok2);
-      setTimeout(() => {
-        $("#q1", root).classList.remove("shake");
-        $("#q2", root).classList.remove("shake");
-      }, 400);
-      showModal("😈", "CHƯA ĐÚNG", "1 trong 2 câu trả lời chưa đúng!");
-    }
-  });
-}
-//----------------------------------------------------------
+/* =========================================================
+   CHALLENGE 4 — ĐOÁN VỊ TRÍ BÓNG
+   ========================================================= */
 function initCupGame(root) {
   root.innerHTML = `
     <div class="cup-game">
@@ -477,48 +620,25 @@ function initCupGame(root) {
         Quan sát vị trí quả bóng.
       </p>
 
-      <div
-        class="cup-arena"
-        id="cupArena"
-        aria-label="Khu vực 3 cốc"
-      >
+      <div class="cup-arena" id="cupArena" aria-label="Khu vực 3 cốc">
         <div class="ball" id="cupBall"></div>
-
         <div class="cup" data-cup="0" aria-hidden="true"></div>
         <div class="cup" data-cup="1" aria-hidden="true"></div>
         <div class="cup" data-cup="2" aria-hidden="true"></div>
       </div>
 
       <div class="cup-labels">
-        <button class="cup-select" data-cup="0" type="button">
-          CỐC 1
-        </button>
-
-        <button class="cup-select" data-cup="1" type="button">
-          CỐC 2
-        </button>
-
-        <button class="cup-select" data-cup="2" type="button">
-          CỐC 3
-        </button>
+        <button class="cup-select" data-cup="0" type="button">CỐC 1</button>
+        <button class="cup-select" data-cup="1" type="button">CỐC 2</button>
+        <button class="cup-select" data-cup="2" type="button">CỐC 3</button>
       </div>
 
       <div>
-        <button
-          id="cupStart"
-          class="primary-btn"
-          type="button"
-        >
-          BẮT ĐẦU VÒNG
-        </button>
+        <button id="cupStart" class="primary-btn" type="button">BẮT ĐẦU VÒNG</button>
       </div>
 
     </div>
   `;
-
-  // =========================================================
-  // ELEMENTS
-  // =========================================================
 
   const cups = [...root.querySelectorAll(".cup")];
   const buttons = [...root.querySelectorAll(".cup-select")];
@@ -528,76 +648,31 @@ function initCupGame(root) {
   const msg = $("#cupMessage", root);
   const roundBadge = $("#cupRound", root);
 
-  // 3 vị trí ngang
   const positions = [16.67, 50, 83.33];
 
-  // =========================================================
-  // GAME STATE
-  // =========================================================
-
-  // slot -> cup ID
-  //
-  // Ví dụ:
-  // [2, 0, 1]
-  //
-  // nghĩa là:
-  // slot 0 = cốc 3
-  // slot 1 = cốc 1
-  // slot 2 = cốc 2
-  //
   let cupAtSlot = [0, 1, 2];
-
-  // ID của cốc đang chứa bóng
   let ballCup = 0;
-
-  // Vị trí hiện tại của bóng
   let ballSlot = 0;
-
-  // =========================================================
-  // ĐẶT VỊ TRÍ 3 CỐC
-  // =========================================================
 
   function setCupPositions(order = [0, 1, 2]) {
     cupAtSlot = [...order];
-
     order.forEach((cupId, slot) => {
       cups[cupId].style.left = `${positions[slot]}%`;
     });
-
-    // Tìm xem cốc chứa bóng hiện đang ở slot nào
     ballSlot = cupAtSlot.indexOf(ballCup);
   }
 
-  // =========================================================
-  // RESET VISUAL
-  // =========================================================
-
   function resetCupVisual() {
-    // Đưa cốc về đúng thứ tự
     setCupPositions([0, 1, 2]);
-
-    // Xóa animation trạng thái
     cups.forEach((c) => {
       c.classList.remove("shuffling", "reveal");
     });
-
-    // Cốc 1 chứa bóng
     ballCup = 0;
-
-    // Cốc 1 ở slot đầu tiên
     ballSlot = 0;
-
-    // Bóng nằm dưới cốc 1
     ball.style.left = `${positions[0]}%`;
-
     ball.style.opacity = "1";
-
     roundBadge.textContent = `Vòng ${cupGame.round + 1} / 3`;
   }
-
-  // =========================================================
-  // RESET TOÀN BỘ GAME
-  // =========================================================
 
   function resetCupGame() {
     cupGame.round = 0;
@@ -612,286 +687,307 @@ function initCupGame(root) {
     });
 
     msg.textContent = "Quan sát vị trí quả bóng.";
-
     roundBadge.textContent = "Vòng 1 / 3";
 
-    // Reset toàn bộ vị trí
     setCupPositions([0, 1, 2]);
-
     cups.forEach((c) => {
       c.classList.remove("shuffling", "reveal");
     });
 
-    // Cốc 1 chứa bóng
     ballCup = 0;
     ballSlot = 0;
-
-    // Bóng dưới cốc 1
     ball.style.left = `${positions[0]}%`;
-
     ball.style.opacity = "1";
   }
 
-  // =========================================================
-  // BẮT ĐẦU VÒNG
-  // =========================================================
-
   async function startRound() {
-    if (cupGame.busy || cupGame.round >= 3) {
-      return;
-    }
+    if (cupGame.busy || cupGame.round >= 3) return;
 
     cupGame.busy = true;
     cupGame.started = true;
 
     roundBadge.textContent = `Vòng ${cupGame.round + 1} / 3`;
-
     msg.textContent = "Quan sát vị trí quả bóng...";
 
     buttons.forEach((b) => {
       b.disabled = true;
     });
 
-    // =======================================================
-    // 1. RESET VỀ TRẠNG THÁI BAN ĐẦU
-    // =======================================================
-
     setCupPositions([0, 1, 2]);
-
     cups.forEach((c) => {
       c.classList.remove("shuffling", "reveal");
     });
 
-    // Luôn bắt đầu với CỐC 1
     ballCup = 0;
     ballSlot = 0;
-
-    // Bóng dưới CỐC 1
     ball.style.left = `${positions[0]}%`;
-
     ball.style.opacity = "1";
 
-    // Cho người chơi nhìn bóng
     await wait(900);
-
-    // =======================================================
-    // 2. 3 CỐC HẠ XUỐNG
-    // =======================================================
 
     cups.forEach((c) => {
       c.classList.add("shuffling");
     });
-
     await wait(400);
 
-    // =======================================================
-    // 3. ẨN BÓNG
-    // =======================================================
-
     ball.style.opacity = "0";
-
     await wait(200);
-
-    // =======================================================
-    // 4. XÁO CỐC
-    // =======================================================
 
     for (let i = 0; i < 5; i++) {
       const order = shuffle(cupAtSlot);
-
       setCupPositions(order);
-
       await wait(260 + i * 35);
     }
 
-    // =======================================================
-    // 5. XÁO XONG
-    // =======================================================
-
     msg.textContent = "Chọn một cốc!";
-
     buttons.forEach((b) => {
       b.disabled = false;
     });
 
     cupGame.busy = false;
-
     start.disabled = true;
   }
 
-  // =========================================================
-  // CHỌN CỐC
-  // =========================================================
-
   buttons.forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (cupGame.busy || !cupGame.started || cupGame.round >= 3) {
-        return;
-      }
+      if (cupGame.busy || !cupGame.started || cupGame.round >= 3) return;
 
       cupGame.busy = true;
-
       buttons.forEach((b) => {
         b.disabled = true;
       });
 
-      // =====================================================
-      // SLOT NGƯỜI CHƠI CHỌN
-      // =====================================================
-
       const guessSlot = Number(btn.dataset.cup);
-
-      // ID thật của cốc ở slot đó
       const guessedCupId = cupAtSlot[guessSlot];
-
-      // Kiểm tra đúng / sai
       const correct = guessSlot === ballSlot;
 
-      // =====================================================
-      // CHỈ CỐC ĐƯỢC CHỌN ĐI LÊN
-      // =====================================================
-
-      cups.forEach((c) => {
-        c.classList.remove("reveal");
-      });
-
+      cups.forEach((c) => c.classList.remove("reveal"));
       cups[guessedCupId].classList.add("reveal");
 
       await wait(400);
 
-      // =====================================================
-      // HIỆN BÓNG
-      // =====================================================
-
       ball.style.left = `${positions[ballSlot]}%`;
-
       ball.style.opacity = "1";
 
       await wait(600);
 
-      // =====================================================
-      // NẾU SAI
-      // =====================================================
-
       if (!correct) {
         msg.textContent = "😈 Sai rồi! Bạn phải chơi lại từ đầu.";
-
         await wait(800);
-
         resetCupGame();
-
         return;
       }
-
-      // =====================================================
-      // NẾU ĐÚNG
-      // =====================================================
 
       cupGame.round += 1;
 
-      // =====================================================
-      // HOÀN THÀNH 3 VÒNG
-      // =====================================================
-
       if (cupGame.round >= 3) {
         msg.textContent = "🎉 Chính xác! Bạn đã hoàn thành!";
-
         cupGame.started = false;
         cupGame.busy = false;
-
         buttons.forEach((b) => {
           b.disabled = true;
         });
-
         completeChallenge(4);
-
         return;
       }
 
-      // =====================================================
-      // CHUẨN BỊ VÒNG TIẾP THEO
-      // =====================================================
-
       msg.textContent = "✓ Chính xác! Chuẩn bị vòng tiếp theo...";
-
       await wait(700);
 
       cupGame.started = false;
       cupGame.busy = false;
-
       start.disabled = false;
-
       start.textContent = "BẮT ĐẦU VÒNG TIẾP";
-
-      // Reset visual:
-      //
-      // Cốc lại ở phía trên
-      // Bóng lại dưới Cốc 1
-      // Không xáo ngay
-      //
       resetCupVisual();
     });
   });
 
-  // =========================================================
-  // NÚT BẮT ĐẦU
-  // =========================================================
-
   start.addEventListener("click", startRound);
 
-  // =========================================================
-  // TRẠNG THÁI BAN ĐẦU
-  // =========================================================
-
   setCupPositions([0, 1, 2]);
-
   ballCup = 0;
   ballSlot = 0;
-
   ball.style.left = `${positions[0]}%`;
-
   ball.style.opacity = "1";
 
-  // Chưa bắt đầu thì không cho chọn cốc
   buttons.forEach((b) => {
     b.disabled = true;
   });
 }
-//----------------------------------------------
-function initSurvey(root) {
-  const options = [
-    ["A", "Vui vãi chưởng", "Yeah!"],
-    ["B", "Bình thường", "Ok"],
-    ["C", "Như l..", "Oe Oe Oe"],
-    ["D", "Meh", ":("],
+
+/* =========================================================
+   CHALLENGE 5 — 4 CÂU HỎI TỰ LUẬN
+   ========================================================= */
+function initEssayQuiz(root) {
+  const ACCEPTED_NAMES = ["long bi", "trần hoàng long", "hoàng long"];
+  const Q2_ANSWER = 4;
+  const Q2_HINT_THRESHOLD = 4;
+
+  const Q3_OPTIONS = [
+    "9 tín",
+    "01/04",
+    "11/09",
+    "22/07",
+    "15/12",
+    "cảnh báo 1",
+    "cảnh báo 2",
   ];
+  const Q3_CORRECT = new Set([0, 1, 4, 5, 6]); // 9 tín, 01/04, 15/12, cảnh báo 1, cảnh báo 2
+  const Q3_CANH_BAO_2 = 6;
+
+  const Q4_OPTIONS = [
+    { label: "A. Không, hay phết", reply: "Thanks ❤️" },
+    { label: "B. Như l...", reply: "Oe Oe Oe 😭" },
+    { label: "C. Tạm", reply: "Bruh :V" },
+    { label: "D. ...", reply: "..." },
+  ];
+
+  const progress = { q1: false, q2: false, q3: false, q4: false };
+  let q2WrongCount = 0;
+  let q2HintShown = false;
+
+  // Xáo trộn thứ tự checkbox nhưng giữ nguyên mapping index thật
+  const q3Order = shuffle([...Q3_OPTIONS.keys()]);
+
   root.innerHTML = `
-    <div class="survey">
-      <div class="survey-question">Đến đây rồi, bạn có thấy trò chơi này vui không?</div>
-      <div class="survey-grid"></div>
+    <div class="questions">
+      <div class="question-item">
+        <label for="eq1">1. Ai là người nổi (tai) tiếng nhất A2K57?</label>
+        <input id="eq1" type="text" autocomplete="off" placeholder="Nhập câu trả lời">
+      </div>
+      <div class="question-item">
+        <label for="eq2">2. Người đó đã trải qua bao nhiêu mối tình?</label>
+        <input id="eq2" type="text" inputmode="numeric" autocomplete="off" placeholder="Nhập một số">
+      </div>
+      <div class="question-item">
+        <label>3. Số liệu nào sau đây liên quan đến người đó nhiều nhất?</label>
+        <div class="checkbox-grid" id="eq3Grid">
+          ${q3Order
+            .map(
+              (realIdx) => `
+            <label class="checkbox-item">
+              <input type="checkbox" value="${realIdx}">
+              <span>${Q3_OPTIONS[realIdx]}</span>
+            </label>
+          `,
+            )
+            .join("")}
+        </div>
+      </div>
+      <div class="question-item">
+        <label>4. Bạn có cảm thấy 3 câu hỏi trên xàm dái không?</label>
+        <div class="choice-grid" id="eq4Grid">
+          ${Q4_OPTIONS.map(
+            (opt, i) => `
+            <button type="button" class="survey-option" data-q4="${i}">${opt.label}</button>
+          `,
+          ).join("")}
+        </div>
+      </div>
+      <div style="text-align:center">
+        <button id="eqCheck" class="primary-btn">KIỂM TRA</button>
+      </div>
     </div>
   `;
-  const grid = $(".survey-grid", root);
-  options.forEach(([letter, label, reply]) => {
-    const btn = document.createElement("button");
-    btn.className = "survey-option";
-    btn.textContent = `${letter}. ${label}`;
+
+  const q1El = $("#eq1", root);
+  const q2El = $("#eq2", root);
+  const q3Grid = $("#eq3Grid", root);
+  const q4Grid = $("#eq4Grid", root);
+
+  q4Grid.querySelectorAll("button[data-q4]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      showModal("😂", reply, "Cảm ơn vì đã trả lời khảo sát.", [
-        {
-          label: "QUA MÀN",
-          className: "primary-btn",
-          onClick: () => {
-            closeModal();
-            completeChallenge(5);
-          },
-        },
+      const idx = Number(btn.dataset.q4);
+      const opt = Q4_OPTIONS[idx];
+      progress.q4 = true;
+      q4Grid
+        .querySelectorAll("button")
+        .forEach((b) => b.classList.remove("chosen"));
+      btn.classList.add("chosen");
+      showModal("💬", "Phản hồi", opt.reply, [
+        { label: "OK", className: "primary-btn", onClick: closeModal },
       ]);
     });
-    grid.appendChild(btn);
+  });
+
+  function flashField(el) {
+    el.classList.remove("shake");
+    void el.offsetWidth;
+    el.classList.add("shake");
+    setTimeout(() => el.classList.remove("shake"), 400);
+  }
+
+  $("#eqCheck", root).addEventListener("click", () => {
+    // ===== Q1 =====
+    const q1Val = normalizeText(q1El.value);
+    const ok1 = ACCEPTED_NAMES.map(normalizeText).includes(q1Val);
+    if (ok1) progress.q1 = true;
+
+    // ===== Q2 =====
+    const q2Raw = q2El.value.trim();
+    const q2Num = Number(q2Raw);
+    const ok2 = q2Raw !== "" && Number.isFinite(q2Num) && q2Num === Q2_ANSWER;
+    if (ok2) {
+      progress.q2 = true;
+    } else {
+      q2WrongCount++;
+    }
+
+    // ===== Q3 =====
+    const selected = [
+      ...q3Grid.querySelectorAll('input[type="checkbox"]:checked'),
+    ].map((cb) => Number(cb.value));
+    const selectedSet = new Set(selected);
+    const q3CorrectSelected =
+      selectedSet.size === Q3_CORRECT.size &&
+      [...Q3_CORRECT].every((i) => selectedSet.has(i));
+
+    const specialSet = new Set(
+      [...Q3_CORRECT].filter((i) => i !== Q3_CANH_BAO_2),
+    );
+    const q3Special =
+      selectedSet.size === specialSet.size &&
+      [...specialSet].every((i) => selectedSet.has(i));
+
+    if (q3CorrectSelected) progress.q3 = true;
+
+    // ===== Đủ cả 4 → qua màn =====
+    if (progress.q1 && progress.q2 && progress.q3 && progress.q4) {
+      completeChallenge(5);
+      return;
+    }
+
+    // ===== Ưu tiên hint đặc biệt cho Q3 =====
+    if (!q3CorrectSelected && q3Special) {
+      showModal("⚠️", "Lưu ý!", "Kỳ 1 cảnh báo 1, kỳ 2...");
+      return;
+    }
+
+    // ===== Hint cho Q2 sau nhiều lần sai =====
+    if (!ok2 && q2WrongCount >= Q2_HINT_THRESHOLD && !q2HintShown) {
+      q2HintShown = true;
+      showModal(
+        "🐧",
+        "Gợi ý",
+        "Bạn có thể đã bỏ qua 1 người nào đó xa tận chân trời, gần ngay trước mắt 🐧",
+      );
+      return;
+    }
+
+    if (!ok1) flashField(q1El);
+    if (!ok2) flashField(q2El);
+
+    const allElseOK = ok1 && ok2 && q3CorrectSelected;
+    const msg = allElseOK
+      ? "Đừng quên trả lời câu 4 nhé!"
+      : "Một số câu trả lời chưa đúng!";
+    showModal("😈", "CHƯA ĐÚNG", msg);
   });
 }
 
+/* =========================================================
+   CHALLENGE 6 — MÁY CHỌN NGẪU NHIÊN
+   ========================================================= */
 function initNameRoulette(root) {
   rouletteSpins = 0;
   const families = [
@@ -980,26 +1076,51 @@ function initNameRoulette(root) {
   });
 }
 
-function initFinalAnimation(root) {
+/* =========================================================
+   CHALLENGE 7 — KHẢO SÁT (nội dung cũ của challenge 5)
+   ========================================================= */
+function initSurvey(root) {
+  const options = [
+    ["A", "Vui vãi chưởng", "Yeah!"],
+    ["B", "Bình thường", "Ok"],
+    ["C", "Như l..", "Oe Oe Oe"],
+    ["D", "Meh", ":("],
+  ];
   root.innerHTML = `
-    <div class="final-stage" id="finalStage">
-      <div class="challenge-orbit" aria-hidden="true">
-        ${[1, 2, 3, 4, 5, 6, 7].map((n, i) => `<div class="orbit-item" style="--delay:${i * 0.08}s">${n}</div>`).join("")}
-      </div>
-      <div id="finalCode" class="final-code">${CONFIG.codes[6]}</div>
+    <div class="survey">
+      <div class="survey-question">Đến đây rồi, bạn có thấy trò chơi này vui không?</div>
+      <div class="survey-grid"></div>
     </div>
   `;
-  const stage = $("#finalStage", root);
-  const code = $("#finalCode", root);
-  requestAnimationFrame(() => stage.classList.add("playing"));
-  setTimeout(() => code.classList.add("show"), 1150);
-  setTimeout(() => completeChallenge(7), 2350);
+  const grid = $(".survey-grid", root);
+  options.forEach(([letter, label, reply]) => {
+    const btn = document.createElement("button");
+    btn.className = "survey-option";
+    btn.textContent = `${letter}. ${label}`;
+    btn.addEventListener("click", () => {
+      showModal("😂", reply, "Cảm ơn vì đã trả lời khảo sát.", [
+        {
+          label: "QUA MÀN",
+          className: "primary-btn",
+          onClick: () => {
+            closeModal();
+            completeChallenge(7);
+          },
+        },
+      ]);
+    });
+    grid.appendChild(btn);
+  });
 }
 
+/* =========================================================
+   FINAL CODE + ANIMATION
+   ========================================================= */
 function validateFinalCode() {
-  const entered = $("#finalCodeInput").value.trim();
+  const input = $("#finalCodeInput");
+  const entered = input.value.trim();
   if (entered === CONFIG.finalCode && state.completed.length === 7) {
-    window.location.href = "birthday.html";
+    playFinalAnimation(input);
   } else {
     showModal(
       "😈",
@@ -1009,6 +1130,51 @@ function validateFinalCode() {
   }
 }
 
+function playFinalAnimation(inputEl) {
+  const panel = inputEl.closest(".code-panel");
+  if (!panel || panel.classList.contains("final-mode")) return;
+  panel.classList.add("final-mode");
+
+  const text = inputEl.value;
+
+  const overlay = document.createElement("div");
+  overlay.className = "final-overlay";
+
+  const codeDisplay = document.createElement("div");
+  codeDisplay.className = "final-code-display";
+  [...text].forEach((ch) => {
+    const span = document.createElement("span");
+    span.className = "final-code-char";
+    span.textContent = ch;
+    codeDisplay.appendChild(span);
+  });
+  overlay.appendChild(codeDisplay);
+  panel.appendChild(overlay);
+
+  const chars = codeDisplay.querySelectorAll(".final-code-char");
+  chars.forEach((span, i) => {
+    setTimeout(() => span.classList.add("fade-out"), i * 70);
+  });
+
+  const fadeDuration = chars.length * 70 + 400;
+
+  setTimeout(() => {
+    codeDisplay.remove();
+    const greeting = document.createElement("div");
+    greeting.className = "final-greeting";
+    greeting.textContent = "Chúc mừng sinh nhật Hà Đăng Huy";
+    overlay.appendChild(greeting);
+    requestAnimationFrame(() => greeting.classList.add("show"));
+
+    setTimeout(() => {
+      window.location.href = "birthday.html";
+    }, 3000);
+  }, fadeDuration);
+}
+
+/* =========================================================
+   MODAL + HELPERS
+   ========================================================= */
 function showModal(icon, title, message, actions = []) {
   modalReturnFocus = document.activeElement;
   $("#modalIcon").textContent = icon;
@@ -1047,6 +1213,7 @@ function closeModal() {
   }
   modalReturnFocus = null;
 }
+
 function flashInput(input, message) {
   input.classList.remove("shake");
   void input.offsetWidth;
@@ -1054,9 +1221,11 @@ function flashInput(input, message) {
   input.focus();
   showModal("😈", "THỬ LẠI", message);
 }
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
 function shuffle(array) {
   const copy = [...array];
   for (let i = copy.length - 1; i > 0; i--) {
