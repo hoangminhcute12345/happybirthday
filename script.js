@@ -299,7 +299,7 @@ function initJigsawPuzzle(root) {
   const COLS = 4;
   const ROWS = 3;
   const TOTAL = COLS * ROWS;
-  const IMAGES = ["./picture.png", "./puzzle_special.png", "./puzzle3.png"];
+  const IMAGES = ["./picture.png", "./puzzle2.png", "./puzzle3.png"];
   let roundIdx = 0;
 
   function startRound() {
@@ -1060,7 +1060,7 @@ function initSurvey(root) {
     btn.className = "survey-option";
     btn.textContent = `${letter}. ${label}`;
     btn.addEventListener("click", () => {
-      showModal(reply, "Cảm ơn vì đã trả lời khảo sát.", [
+      showModal("", reply, "Cảm ơn vì đã trả lời khảo sát.", [
         {
           label: "QUA MÀN",
           className: "primary-btn",
