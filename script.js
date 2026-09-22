@@ -65,7 +65,7 @@ const CHALLENGES = [
 ];
 
 const STORAGE_KEY = "birthday-quest-v2-rps";
-const state = loadState();
+const state = defaultState();
 let modalReturnFocus = null;
 let currentChallengeView = null;
 let cupGame = { round: 0, ballPos: 0, busy: false, started: false };
@@ -816,7 +816,7 @@ function initCupGame(root) {
 }
 
 /* =========================================================
-   CHALLENGE 5 — 4 CÂU HỎI TỰ LUẬN
+   CHALLENGE 5 — 3 CÂU HỎI TỰ LUẬN
    ========================================================= */
 function initEssayQuiz(root) {
   const ACCEPTED_NAMES = ["long bi", "trần hoàng long", "hoàng long"];
@@ -835,18 +835,10 @@ function initEssayQuiz(root) {
   const Q3_CORRECT = new Set([0, 1, 4, 5, 6]); // 9 tín, 01/04, 15/12, cảnh báo 1, cảnh báo 2
   const Q3_CANH_BAO_2 = 6;
 
-  const Q4_OPTIONS = [
-    { label: "A. Không, hay phết", reply: "Thanks ❤️" },
-    { label: "B. Như l...", reply: "Oe Oe Oe 😭" },
-    { label: "C. Tạm", reply: "Bruh :V" },
-    { label: "D. ...", reply: "..." },
-  ];
-
-  const progress = { q1: false, q2: false, q3: false, q4: false };
+  const progress = { q1: false, q2: false, q3: false };
   let q2WrongCount = 0;
   let q2HintShown = false;
 
-  // Xáo trộn thứ tự checkbox nhưng giữ nguyên mapping index thật
   const q3Order = shuffle([...Q3_OPTIONS.keys()]);
 
   root.innerHTML = `
@@ -874,16 +866,6 @@ function initEssayQuiz(root) {
             .join("")}
         </div>
       </div>
-      <div class="question-item">
-        <label>4. Bạn có cảm thấy 3 câu hỏi trên xàm dái không?</label>
-        <div class="choice-grid" id="eq4Grid">
-          ${Q4_OPTIONS.map(
-            (opt, i) => `
-            <button type="button" class="survey-option" data-q4="${i}">${opt.label}</button>
-          `,
-          ).join("")}
-        </div>
-      </div>
       <div style="text-align:center">
         <button id="eqCheck" class="primary-btn">KIỂM TRA</button>
       </div>
@@ -893,22 +875,6 @@ function initEssayQuiz(root) {
   const q1El = $("#eq1", root);
   const q2El = $("#eq2", root);
   const q3Grid = $("#eq3Grid", root);
-  const q4Grid = $("#eq4Grid", root);
-
-  q4Grid.querySelectorAll("button[data-q4]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.dataset.q4);
-      const opt = Q4_OPTIONS[idx];
-      progress.q4 = true;
-      q4Grid
-        .querySelectorAll("button")
-        .forEach((b) => b.classList.remove("chosen"));
-      btn.classList.add("chosen");
-      showModal("💬", "Phản hồi", opt.reply, [
-        { label: "OK", className: "primary-btn", onClick: closeModal },
-      ]);
-    });
-  });
 
   function flashField(el) {
     el.classList.remove("shake");
@@ -951,8 +917,8 @@ function initEssayQuiz(root) {
 
     if (q3CorrectSelected) progress.q3 = true;
 
-    // ===== Đủ cả 4 → qua màn =====
-    if (progress.q1 && progress.q2 && progress.q3 && progress.q4) {
+    // ===== Đủ cả 3 → qua màn =====
+    if (progress.q1 && progress.q2 && progress.q3) {
       completeChallenge(5);
       return;
     }
@@ -977,11 +943,7 @@ function initEssayQuiz(root) {
     if (!ok1) flashField(q1El);
     if (!ok2) flashField(q2El);
 
-    const allElseOK = ok1 && ok2 && q3CorrectSelected;
-    const msg = allElseOK
-      ? "Đừng quên trả lời câu 4 nhé!"
-      : "Một số câu trả lời chưa đúng!";
-    showModal("😈", "CHƯA ĐÚNG", msg);
+    showModal("😈", "CHƯA ĐÚNG", "Một số câu trả lời chưa đúng!");
   });
 }
 
@@ -1098,7 +1060,7 @@ function initSurvey(root) {
     btn.className = "survey-option";
     btn.textContent = `${letter}. ${label}`;
     btn.addEventListener("click", () => {
-      showModal("😂", reply, "Cảm ơn vì đã trả lời khảo sát.", [
+      showModal(reply, "Cảm ơn vì đã trả lời khảo sát.", [
         {
           label: "QUA MÀN",
           className: "primary-btn",
